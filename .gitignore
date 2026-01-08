@@ -1,0 +1,34 @@
+*.DS_Store
+node_modules
+dist
+dist/*
+*.zip
+src/ipc/tests/assets/
+
+src/ipc/tests/assets/decrypt_*
+src/ipc/tests/assets/*.sealed
+
+# local env files
+.env.local
+.env.*.local
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor directories and files
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+#Electron-builder output
+/dist_electron
+# Sentry Config File
+.env.sentry-build-plugin
+
+*.txt
