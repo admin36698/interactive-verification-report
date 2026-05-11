@@ -29,7 +29,7 @@ const storage_config = JSON.parse(`{
         },
     "cdn":{
     },
-    "data_dir":"${__dirname}"
+    "data_dir":"${__dirname.replace(/\\/g, '\\\\')}"
     }`);
 
     afterAll(() => {
