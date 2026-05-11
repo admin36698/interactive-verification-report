@@ -1,12 +1,10 @@
-const { createRequire } = require('module');
-const fs = require("fs")
-const { randomUUID } =require( 'crypto');
+const fs = require("fs");
 const path = require('path');
-
 
 const processorCodeKey = function(enclave_hash){
     return enclave_hash + "_p";
 }
+
 const interactorCodeKey = function(enclave_hash){
     return enclave_hash + "_i";
 }
@@ -14,70 +12,65 @@ const interactorCodeKey = function(enclave_hash){
 const code_dir = function(_storage_config){
     let dir;
     if(_storage_config === undefined){
-      dir =  path.join(__dirname, "code");
-    }else{
-      dir = path.join(_storage_config.data_dir, "code")
+      dir = path.join(__dirname, "code");
+    } else {
+      dir = path.join(_storage_config.data_dir, "code");
     }
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-    return dir
-  }
+    return dir;
+}
 
+const loadHandler = async function(all_code_store, code_dir_path, codeKey, fileSuffix, codeProvider, enclaveHash, errorPrefix) {
+    const cacheKey = codeKey(enclaveHash);
+    let handler = all_code_store.access(cacheKey);
+    
+    if (handler === null) {
+        const modulePath = path.join(code_dir_path, `${enclaveHash}${fileSuffix}`);
+        const code = typeof codeProvider === 'function' ? await codeProvider(enclaveHash) : codeProvider;
+        fs.writeFileSync(modulePath, code);
+        handler = require(modulePath);
+        all_code_store.add(cacheKey, handler);
+    }
+    
+    if (typeof handler !== 'function') {
+        throw new Error(`Invalid ${errorPrefix} for enclave hash: ${enclaveHash}`);
+    }
+    
+    return handler;
+}
 
-// 动态加载指定的处理模块
-const loadInteractiveHandler = async function (all_interactor_code, code_dir, meta_provider, enclaveHash) {
+const loadInteractiveHandler = async function(all_interactor_code, code_dir_path, meta_provider, enclaveHash) {
     try {
-        
-        //使用缓存，避免频繁读取文件
-        var enclaveHandler = all_interactor_code.access(interactorCodeKey(enclaveHash))
-        if(enclaveHandler === null){
-          // 根据 enclave_hash 动态加载对应的模块
-          
-          var modulePath = path.join(code_dir, `${enclaveHash}_interactor.js`);
-          if(true/*!fs.existsSync(modulePath)*/){
-            fs.writeFileSync(modulePath, await meta_provider.getInteractorCode(enclaveHash));
-          }
-          enclaveHandler = require(modulePath);
-          all_interactor_code.add(interactorCodeKey(enclaveHash), enclaveHandler);
-        }
-        
-  
-        // 校验并执行动态加载的模块，传递不同的参数
-        if (typeof enclaveHandler !== 'function') {
-            throw new Error(`Invalid handler for enclave hash: ${enclaveHash}`);
-        }
-  
-        return enclaveHandler;
+        return await loadHandler(
+            all_interactor_code,
+            code_dir_path,
+            interactorCodeKey,
+            '_interactor.js',
+            (hash) => meta_provider.getInteractorCode(hash),
+            enclaveHash,
+            'handler'
+        );
     } catch (error) {
         throw new Error(`Error loading enclave handler: ${error.message}`);
     }
-  }
+}
 
-const loadDataProcessorHandler = async function (all_processor_code, code_dir, processor_code, enclaveHash) {
+const loadDataProcessorHandler = async function(all_processor_code, code_dir_path, processor_code, enclaveHash) {
     try {
-      console.log("processor_code: ", processor_code);
-        //使用缓存，避免频繁读取文件
-        var enclaveHandler = all_processor_code.access(processorCodeKey(enclaveHash))
-        if(enclaveHandler === null){
-          // 根据 enclave_hash 动态加载对应的模块
-          
-          var modulePath = path.join(code_dir, `${enclaveHash}_data_processor.js`);
-          if(true/*!fs.existsSync(modulePath)*/){
-            fs.writeFileSync(modulePath, processor_code);
-          }
-          enclaveHandler = require(modulePath);
-          all_processor_code.add(processorCodeKey(enclaveHash), enclaveHandler);
-        }
-        
-        // 校验并执行动态加载的模块，传递不同的参数
-        if (typeof enclaveHandler !== 'function') {
-            throw new Error(`Invalid data processor code for enclave hash: ${enclaveHash}`);
-        }
-  
-        return enclaveHandler;
+        return await loadHandler(
+            all_processor_code,
+            code_dir_path,
+            processorCodeKey,
+            '_data_processor.js',
+            processor_code,
+            enclaveHash,
+            'data processor code'
+        );
     } catch (error) {
         throw new Error(`Error loading data processor code: ${error.message}`);
     }
-  }
-  module.exports = { code_dir, loadDataProcessorHandler, loadInteractiveHandler };
+}
+
+module.exports = { code_dir, loadDataProcessorHandler, loadInteractiveHandler };

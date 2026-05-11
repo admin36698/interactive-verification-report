@@ -24,35 +24,45 @@ parentPort.on('message', (task) => {
     const temp_report = `./temp-report-${randomUUID()}.data`; // 生成临时文件
 
     (async()=>{
-        
-        const private_key = meta_provider.shu_private_key;
-        const enclave_hash = meta_provider.enclave_hash;
-        
-        let unsealer = new Unsealer({keyPair:{private_key:private_key}});
-        let rrs = new SealedFileStream(local_encrypted_report_url);
-        let wws = fs.createWriteStream(temp_report)
+        try {
+            const private_key = meta_provider.shu_private_key;
+            const enclave_hash = meta_provider.enclave_hash;
+            
+            let unsealer = new Unsealer({keyPair:{private_key:private_key}});
+            let rrs = new SealedFileStream(local_encrypted_report_url);
+            let wws = fs.createWriteStream(temp_report)
 
-        rrs.pipe(unsealer).pipe(wws);
-        await new Promise(resolve=>{
-            wws.on('finish', ()=>resolve());
-        })
-        const dataProcessor = await loadDataProcessorHandler(all_processor_code, code_dir(storage), meta_provider.processor_code, enclave_hash);
+            rrs.pipe(unsealer).pipe(wws);
+            await new Promise((resolve, reject) => {
+                wws.on('finish', resolve);
+                wws.on('error', reject);
+                rrs.on('error', reject);
+            });
 
-        let result = await dataProcessor(storage, enclave_hash, request_hash, temp_report);
-        if (result && result.success === undefined && result.result === undefined) {
-            // 兼容直接返回 meta 的处理器
-            result = { success: true, result };
+            const dataProcessor = await loadDataProcessorHandler(all_processor_code, code_dir(storage), meta_provider.processor_code, enclave_hash);
+
+            let result = await dataProcessor(storage, enclave_hash, request_hash, temp_report);
+            if (result && result.success === undefined && result.result === undefined) {
+                result = { success: true, result };
+            }
+
+            await unlink(temp_report);
+
+            if(result.success){
+                fs.writeFileSync(path.join(meta_file_dir, request_hash + ".meta"), JSON.stringify(result.result, null, 2));
+                parentPort.postMessage({ success: true, result: result.result });
+            } else {
+                parentPort.postMessage({ success: false, error: result.error || 'Unknown error' });
+            }
+        } catch (err) {
+            log.error('Task processing error:', err.message);
+            try {
+                await unlink(temp_report);
+            } catch (e) {
+                log.warn('Failed to cleanup temp file:', e.message);
+            }
+            parentPort.postMessage({ success: false, error: err.message });
         }
-        //const result = await executeMixedCode(vrprocessor, storage, {enclave_hash:enclave_hash, request_hash:request_hash, report:temp_report})
-        await unlink(temp_report)
-        if(result.success){
-            console.log("to write meta file, ", meta_file_dir)
-            fs.writeFileSync(path.join(meta_file_dir, request_hash + ".meta"), JSON.stringify(result.result, null, 2));
-            console.log("write meta file done")
-            parentPort.postMessage(result.result)
-        }else{
-            throw new Error(result.error)
-        }
-    })().catch((err)=>{ console.error(err); })//TODO, handle the error
+    })();
     
 });

@@ -1,0 +1,25 @@
+{
+  "report_id": "VR-2026-002",
+  "generated_at": "2026-05-11T10:30:00Z",
+  "report_type": "用户登录验证",
+  "status": "success",
+  "data": {
+    "user_id": "user_12345",
+    "username": "test_user",
+    "login_time": "2026-05-11T10:25:00Z",
+    "ip_address": "192.168.1.100",
+    "device_info": "Windows 10, Chrome 120",
+    "verified": true,
+    "verification_details": {
+      "password_check": "passed",
+      "2fa_check": "passed",
+      "risk_score": 0.15,
+      "session_token": "session_abc123xyz789"
+    }
+  },
+  "metadata": {
+    "version": "1.0",
+    "algorithm": "SHA-256",
+    "signature": "valid"
+  }
+}

@@ -3,147 +3,982 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Interactive Verification Report Demo</title>
+    <title>交互式验证报告系统</title>
     <style>
-      :root { --bg: #0b1220; --fg: #e6e8ee; --muted: #9aa4b2; --accent: #5b8cff; }
-      * { box-sizing: border-box; }
-      body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; background: var(--bg); color: var(--fg); }
-      header, footer { padding: 16px 24px; background: rgba(255,255,255,0.04); border-bottom: 1px solid rgba(255,255,255,0.06); }
-      footer { border-top: 1px solid rgba(255,255,255,0.06); border-bottom: none; }
-      .wrap { max-width: 960px; margin: 0 auto; }
-  main { min-height: calc(100vh - 140px); display: flex; align-items: stretch; }
-  .content { flex: 1; padding: 24px; display: grid; gap: 16px; align-content: start; }
-      .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-      input[type="text"] { flex: 1; min-width: 260px; padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.02); color: var(--fg); }
-      button { padding: 10px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12); background: var(--accent); color: white; cursor: pointer; }
-      button:disabled { opacity: .6; cursor: not-allowed; }
-      .card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px; }
-      .muted { color: var(--muted); }
-      pre { margin: 0; white-space: pre-wrap; word-break: break-word; }
+      :root { 
+        --bg-primary: #0a0e17; 
+        --bg-secondary: #111827; 
+        --bg-card: rgba(255,255,255,0.03);
+        --fg-primary: #f1f5f9; 
+        --fg-secondary: #94a3b8; 
+        --accent: #60a5fa; 
+        --accent-hover: #3b82f6;
+        --success: #22c55e;
+        --warning: #f59e0b;
+        --error: #ef4444;
+        --border-color: rgba(255,255,255,0.08);
+        --border-radius: 12px;
+      }
+      * { 
+        box-sizing: border-box; 
+        margin: 0;
+        padding: 0;
+      }
+      body { 
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; 
+        background: linear-gradient(135deg, var(--bg-primary) 0%, #0f1419 100%); 
+        color: var(--fg-primary); 
+        min-height: 100vh;
+      }
+      .glass-effect {
+        background: rgba(255,255,255,0.02);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+      }
+      header { 
+        padding: 20px 32px; 
+        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--border-color);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        box-shadow: 0 4px 30px rgba(0,0,0,0.3);
+      }
+      footer { 
+        padding: 16px 32px;
+        background: var(--bg-secondary); 
+        border-top: 1px solid var(--border-color);
+        margin-top: auto;
+      }
+      .wrap { 
+        max-width: 1400px; 
+        margin: 0 auto; 
+        padding: 0 16px;
+      }
+      .header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+      }
+      .header-title {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .logo {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, var(--accent) 0%, #8b5cf6 100%);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        font-weight: bold;
+      }
+      .title-text {
+        font-size: 18px;
+        font-weight: 600;
+        background: linear-gradient(135deg, var(--fg-primary) 0%, var(--fg-secondary) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      .status-badge {
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 13px;
+        background: rgba(34, 197, 94, 0.15);
+        color: var(--success);
+        border: 1px solid rgba(34, 197, 94, 0.2);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        background: var(--success);
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+      main { 
+        min-height: calc(100vh - 140px); 
+        padding: 32px 0;
+      }
+      .content {
+        display: grid;
+        gap: 20px;
+        grid-template-columns: 1fr 340px;
+      }
+      @media (max-width: 1024px) {
+        .content { grid-template-columns: 1fr; }
+      }
+      .toolbar { 
+        display: flex; 
+        gap: 12px; 
+        flex-wrap: wrap; 
+        align-items: center;
+        padding: 20px 24px;
+        background: var(--bg-card);
+        border-radius: var(--border-radius);
+        border: 1px solid var(--border-color);
+        margin-bottom: 20px;
+      }
+      input[type="text"] { 
+        flex: 1; 
+        min-width: 220px; 
+        padding: 12px 16px; 
+        border-radius: 10px; 
+        border: 1px solid var(--border-color); 
+        background: rgba(255,255,255,0.02); 
+        color: var(--fg-primary);
+        font-size: 14px;
+        transition: all 0.2s;
+      }
+      input[type="text"]:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+      }
+      button { 
+        padding: 12px 20px; 
+        border-radius: 10px; 
+        border: none; 
+        background: linear-gradient(135deg, var(--accent) 0%, #3b82f6 100%);
+        color: white; 
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      button:hover:not(:disabled) { 
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px rgba(96, 165, 250, 0.3);
+      }
+      button:active:not(:disabled) { 
+        transform: translateY(0);
+      }
+      button:disabled { 
+        opacity: .5; 
+        cursor: not-allowed; 
+      }
+      button.secondary {
+        background: rgba(255,255,255,0.08);
+        color: var(--fg-primary);
+      }
+      button.secondary:hover { 
+        background: rgba(255,255,255,0.12);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      }
+      button.danger {
+        background: rgba(239, 68, 68, 0.15);
+        color: var(--error);
+      }
+      button.danger:hover { 
+        background: rgba(239, 68, 68, 0.25);
+        box-shadow: 0 4px 15px rgba(239, 68, 68, 0.2);
+      }
+      .card { 
+        background: var(--bg-card); 
+        border: 1px solid var(--border-color); 
+        border-radius: var(--border-radius); 
+        overflow: hidden;
+        transition: all 0.3s;
+      }
+      .card:hover {
+        border-color: rgba(255,255,255,0.12);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+      }
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 18px 20px;
+        background: rgba(255,255,255,0.02);
+        border-bottom: 1px solid var(--border-color);
+      }
+      .card-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--fg-primary);
+      }
+      .card-body {
+        padding: 20px;
+      }
+      .muted { color: var(--fg-secondary); }
+      .text-success { color: var(--success); }
+      .text-error { color: var(--error); }
+      .text-warning { color: var(--warning); }
+      pre { 
+        margin: 0; 
+        white-space: pre-wrap; 
+        word-break: break-word; 
+        font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+      .code-block {
+        background: rgba(0,0,0,0.4);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 16px;
+        overflow-x: auto;
+        max-height: 450px;
+        overflow-y: auto;
+        color: #e2e8f0;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      th {
+        text-align: left;
+        padding: 12px 10px;
+        border-bottom: 1px solid var(--border-color);
+        font-weight: 600;
+        color: var(--fg-secondary);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      td {
+        padding: 12px 10px;
+        border-bottom: 1px solid rgba(255,255,255,0.03);
+      }
+      tr:hover td {
+        background: rgba(255,255,255,0.03);
+      }
+      .file-upload-area {
+        border: 2px dashed var(--border-color);
+        border-radius: 12px;
+        padding: 32px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        background: rgba(255,255,255,0.02);
+      }
+      .file-upload-area:hover {
+        border-color: var(--accent);
+        background: rgba(96, 165, 250, 0.05);
+      }
+      .file-upload-area.dragover {
+        border-color: var(--accent);
+        background: rgba(96, 165, 250, 0.1);
+        transform: scale(1.02);
+      }
+      .file-upload-area input[type="file"] {
+        display: none;
+      }
+      .file-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px;
+        background: rgba(255,255,255,0.03);
+        border-radius: 10px;
+        margin-top: 14px;
+      }
+      .file-name {
+        flex: 1;
+        font-size: 13px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .tab-container {
+        display: flex;
+        gap: 6px;
+        padding: 4px;
+        background: rgba(255,255,255,0.03);
+        border-radius: 10px;
+      }
+      .tab {
+        padding: 10px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        background: transparent;
+        border: none;
+        color: var(--fg-secondary);
+        transition: all 0.2s;
+      }
+      .tab.active {
+        background: rgba(255,255,255,0.1);
+        color: var(--fg-primary);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      }
+      .report-content {
+        min-height: 350px;
+        background: rgba(0,0,0,0.3);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 20px;
+      }
+      .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 250px;
+        color: var(--fg-secondary);
+      }
+      .loading-spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(255,255,255,0.1);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      .notification {
+        position: fixed;
+        bottom: 32px;
+        right: 32px;
+        padding: 16px 20px;
+        border-radius: 10px;
+        background: rgba(0,0,0,0.9);
+        border: 1px solid var(--border-color);
+        color: var(--fg-primary);
+        font-size: 14px;
+        z-index: 1000;
+        animation: slideIn 0.3s ease;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      }
+      @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+      .notification.success { 
+        border-color: rgba(34, 197, 94, 0.3); 
+        background: linear-gradient(135deg, rgba(34,197,94,0.1) 0%, rgba(34,197,94,0.05) 100%);
+      }
+      .notification.error { 
+        border-color: rgba(239, 68, 68, 0.3); 
+        background: linear-gradient(135deg, rgba(239,68,68,0.1) 0%, rgba(239,68,68,0.05) 100%);
+      }
+      .meta-info {
+        display: grid;
+        gap: 12px;
+        font-size: 13px;
+      }
+      .meta-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 14px;
+        background: rgba(255,255,255,0.03);
+        border-radius: 8px;
+        transition: all 0.2s;
+      }
+      .meta-row:hover {
+        background: rgba(255,255,255,0.05);
+      }
+      .meta-label { 
+        color: var(--fg-secondary); 
+        font-weight: 500;
+      }
+      .meta-value { 
+        font-family: 'JetBrains Mono', monospace; 
+        color: var(--accent);
+      }
+      .file-type-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        background: rgba(255,255,255,0.1);
+        color: var(--fg-secondary);
+      }
+      .file-type-zip { 
+        background: rgba(139, 92, 246, 0.15); 
+        color: #c4b5fd; 
+        border: 1px solid rgba(139, 92, 246, 0.2);
+      }
+      .file-type-pdf { 
+        background: rgba(239, 68, 68, 0.15); 
+        color: #fca5a5; 
+        border: 1px solid rgba(239, 68, 68, 0.2);
+      }
+      .file-type-json { 
+        background: rgba(34, 197, 94, 0.15); 
+        color: #86efac; 
+        border: 1px solid rgba(34, 197, 94, 0.2);
+      }
+      .file-type-txt { 
+        background: rgba(251, 191, 36, 0.15); 
+        color: #fde047; 
+        border: 1px solid rgba(251, 191, 36, 0.2);
+      }
+      .file-type-data { 
+        background: rgba(59, 130, 246, 0.15); 
+        color: #93c5fd; 
+        border: 1px solid rgba(59, 130, 246, 0.2);
+      }
+      .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+        margin-top: 16px;
+      }
+      .feature-card {
+        padding: 14px;
+        background: rgba(255,255,255,0.03);
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        text-align: center;
+      }
+      .feature-icon {
+        font-size: 24px;
+        margin-bottom: 8px;
+      }
+      .feature-title {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--fg-primary);
+      }
+      .feature-desc {
+        font-size: 12px;
+        color: var(--fg-secondary);
+        margin-top: 4px;
+      }
     </style>
   </head>
   <body>
     <header>
-      <div class="wrap">
-        <strong>Interactive Verification Report</strong>
-        <span class="muted">· 网页动态加载演示</span>
+      <div class="wrap header-content">
+        <div class="header-title">
+          <div class="logo">VR</div>
+          <div>
+            <div class="title-text">交互式验证报告系统</div>
+            <div style="font-size:12px;color:var(--fg-secondary);margin-top:2px;">Interactive Verification Report</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:16px;align-items:center;">
+          <span class="status-badge">
+            <span class="status-dot"></span>
+            <span>运行中</span>
+          </span>
+          <span class="muted" style="font-size:13px;">端口: 5052</span>
+        </div>
       </div>
     </header>
 
     <main>
       <div class="wrap content">
-        <div class="card toolbar">
-          <input id="hashInput" type="text" value="req_abcdefg" placeholder="输入 request_hash，例如 req_abcdefg" />
-          <button id="loadBtn">加载报告</button>
-          <button id="refreshBtn" title="刷新列表">刷新列表</button>
-          <span id="status" class="muted"></span>
+        <div style="grid-column: 1;">
+          <div class="toolbar">
+            <input id="hashInput" type="text" value="req_abcdefg" placeholder="输入 request_hash" />
+            <button id="generateBtn" class="secondary">📊 生成报告</button>
+            <button id="refreshBtn" class="secondary">🔄 刷新列表</button>
+            <span id="status" class="muted"></span>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">📋 报告内容</h3>
+              <div class="tab-container">
+                <button class="tab active" data-tab="html">HTML视图</button>
+                <button class="tab" data-tab="json">JSON数据</button>
+                <button class="tab" data-tab="meta">元数据</button>
+              </div>
+            </div>
+            
+            <div class="card-body">
+              <div id="reportContent" class="report-content">
+                <div class="empty-state">
+                  <div class="loading-spinner"></div>
+                  <span style="margin-top:16px;font-size:14px;">加载中...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">📡 API 请求示例</h3>
+            </div>
+            <div class="card-body">
+              <div class="code-block">
+                <pre>GET /api/report?request_hash={request_hash}&params={params}</pre>
+              </div>
+              <div style="margin-top:16px;font-size:13px;color:var(--fg-secondary);">
+                <p style="font-weight:600;color:var(--fg-primary);margin-bottom:10px;">参数说明:</p>
+                <div style="display:grid;gap:8px;">
+                  <div><code style="color:var(--accent);">request_hash</code> - 验证报告的唯一标识（必填）</div>
+                  <div><code style="color:var(--accent);">params</code> - 附加参数（可选，JSON字符串格式）</div>
+                </div>
+                <p style="font-weight:600;color:var(--fg-primary);margin-top:12px;margin-bottom:10px;">params 支持的字段:</p>
+                <div style="display:grid;gap:6px;padding-left:16px;">
+                  <div><code style="color:var(--success);">format</code> - 返回格式：<code>json</code> 或 <code>html</code></div>
+                  <div><code style="color:var(--success);">action</code> - 操作类型：<code>json</code>、<code>summary</code></div>
+                  <div><code style="color:var(--success);">version</code> - 版本号</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
 
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
-            <strong>可用请求列表</strong>
-            <span class="muted">来自 /api/list</span>
+        <div style="grid-column: 2;">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">📁 上传文件</h3>
+            </div>
+            <div class="card-body">
+              <div class="file-upload-area" id="uploadArea">
+                <div>
+                  <div style="font-size:32px;margin-bottom:10px;">📁</div>
+                  <div style="font-size:14px;font-weight:500;">拖拽文件到此处</div>
+                  <div style="font-size:12px;color:var(--fg-secondary);margin-top:6px;">或点击选择文件</div>
+                  <div style="font-size:11px;color:var(--fg-secondary);margin-top:4px;">支持 .data .zip .pdf .json .txt</div>
+                </div>
+                <input type="file" id="fileInput" accept=".data,.zip,.pdf,.json,.txt" />
+              </div>
+              <div id="fileInfo" style="display:none;" class="file-info">
+                <span class="file-name" id="fileName"></span>
+                <span id="fileTypeBadge" class="file-type-badge"></span>
+                <button id="clearFile" class="danger" style="padding:6px 10px;font-size:12px;">清除</button>
+              </div>
+              <div style="margin-top:16px;">
+                <input id="newRequestHash" type="text" placeholder="新的 request_hash（可选）" style="width:100%;" />
+              </div>
+              <button id="uploadBtn" style="width:100%;margin-top:12px;" disabled>🚀 处理并上传文件</button>
+            </div>
           </div>
-          <div style="overflow:auto;margin-top:8px;">
-            <table id="listTable" style="width:100%;border-collapse:collapse;">
-              <thead>
-                <tr>
-                  <th style="text-align:left;padding:8px;border-bottom:1px solid rgba(255,255,255,0.1);">request_hash</th>
-                  <th style="text-align:left;padding:8px;border-bottom:1px solid rgba(255,255,255,0.1);">enclave_hash</th>
-                  <th style="text-align:left;padding:8px;border-bottom:1px solid rgba(255,255,255,0.1);">data</th>
-                  <th style="text-align:left;padding:8px;border-bottom:1px solid rgba(255,255,255,0.1);">meta</th>
-                  <th style="text-align:left;padding:8px;border-bottom:1px solid rgba(255,255,255,0.1);">VRDataProcessor</th>
-                  <th style="text-align:left;padding:8px;border-bottom:1px solid rgba(255,255,255,0.1);">VRInteractor</th>
-                  <th style="text-align:left;padding:8px;border-bottom:1px solid rgba(255,255,255,0.1);">操作</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
 
-        <div id="report" class="card">
-          <div class="muted">报告内容</div>
-          <div id="reportContent" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px; min-height: 80px; overflow:auto;">尚未加载</div>
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">📋 可用报告列表</h3>
+              <button id="refreshList" style="padding:6px 12px;font-size:12px;background:transparent;color:var(--fg-secondary);">🔄</button>
+            </div>
+            <div class="card-body" style="padding:0;">
+              <div style="max-height:280px;overflow-y:auto;">
+                <table id="listTable">
+                  <thead>
+                    <tr>
+                      <th style="width:55%">request_hash</th>
+                      <th style="width:25%">类型</th>
+                      <th style="width:20%">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">🔑 当前元数据</h3>
+            </div>
+            <div class="card-body">
+              <div id="metaInfo" class="meta-info">
+                <div class="meta-row">
+                  <span class="meta-label">request_hash</span>
+                  <span class="meta-value">-</span>
+                </div>
+                <div class="meta-row">
+                  <span class="meta-label">enclave_hash</span>
+                  <span class="meta-value">-</span>
+                </div>
+                <div class="meta-row">
+                  <span class="meta-label">文件类型</span>
+                  <span class="meta-value">-</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </main>
 
     <footer>
-      <div class="wrap muted">示例页 · 顶部和底部为头部区域，中间为用于呈现报告的 DOM 容器</div>
+      <div class="wrap" style="text-align:center;">
+        <div style="font-size:13px;color:var(--fg-secondary);">
+          <span style="margin-right:16px;">交互式验证报告系统</span>
+          <span style="margin-right:16px;">|</span>
+          <span>支持多种文件类型处理</span>
+          <span style="margin-left:8px;">📁</span>
+        </div>
+      </div>
     </footer>
 
     <script>
       const $ = (id) => document.getElementById(id);
-  const hashInput = $("hashInput");
-  const loadBtn = $("loadBtn");
-  const refreshBtn = $("refreshBtn");
-  const status = $("status");
-  const reportContent = $("reportContent");
-  const listTableBody = document.querySelector('#listTable tbody');
+      
+      const hashInput = $("hashInput");
+      const refreshBtn = $("refreshBtn");
+      const status = $("status");
+      const reportContent = $("reportContent");
+      const listTableBody = document.querySelector('#listTable tbody');
+      const uploadArea = $("uploadArea");
+      const fileInput = $("fileInput");
+      const fileInfo = $("fileInfo");
+      const fileName = $("fileName");
+      const fileTypeBadge = $("fileTypeBadge");
+      const clearFile = $("clearFile");
+      const newRequestHash = $("newRequestHash");
+      const uploadBtn = $("uploadBtn");
+      const refreshList = $("refreshList");
+      const metaInfo = $("metaInfo");
+      const tabs = document.querySelectorAll('.tab');
 
-      async function loadReport() {
-        const request_hash = hashInput.value.trim();
-        if (!request_hash) { alert('请填写 request_hash'); return; }
-        loadBtn.disabled = true; status.textContent = '加载中...';
-        reportContent.textContent = '加载中...';
-        try {
-          const resp = await fetch(`/api/report?request_hash=${encodeURIComponent(request_hash)}`);
-          if (resp.status === 304) { status.textContent = '未更改(304)'; return; }
-          const data = await resp.json();
-          if (!resp.ok || !data.success) throw new Error((data && data.error && data.error.message) || '请求失败');
-          if (typeof data.result === 'string') {
-            // 交互器返回 HTML 字符串
-            reportContent.innerHTML = data.result;
-            // 点击事件的响应逻辑已内嵌在 abcd_interactor 返回的 HTML 中
-          } else {
-            reportContent.textContent = JSON.stringify(data.result, null, 2);
-          }
-          status.textContent = '加载完成';
-        } catch (e) {
-          status.textContent = '加载失败';
-          reportContent.textContent = String(e);
-        } finally { loadBtn.disabled = false; }
+      let currentMeta = null;
+      let currentResult = null;
+
+      function showNotification(message, type = 'success') {
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        setTimeout(() => notification.remove(), 3500);
       }
 
-      async function refreshList() {
+      function getFileTypeClass(ext) {
+        const classes = {
+          '.zip': 'file-type-zip',
+          '.pdf': 'file-type-pdf',
+          '.json': 'file-type-json',
+          '.txt': 'file-type-txt',
+          '.data': 'file-type-data'
+        };
+        return classes[ext.toLowerCase()] || '';
+      }
+
+      async function loadReport(format = 'html') {
+        const request_hash = hashInput.value.trim();
+        if (!request_hash) { 
+          showNotification('请填写 request_hash', 'error');
+          return; 
+        }
+        
+        status.textContent = '加载中...';
+        
+        const params = { format };
+        const paramsStr = encodeURIComponent(JSON.stringify(params));
+        
         try {
-          const resp = await fetch('/api/list');
+          const resp = await fetch(`/api/report?request_hash=${encodeURIComponent(request_hash)}&params=${paramsStr}`);
+          if (resp.status === 304) { 
+            status.textContent = '未更改(304)';
+            return; 
+          }
           const data = await resp.json();
-          if (!resp.ok || !data.success) throw new Error(data.message || '请求失败');
-          const rows = (data.result || []).map(item => {
-            const toCell = (v) => `<td style="padding:8px;border-bottom:1px solid rgba(255,255,255,0.06);">${v ? String(v) : '<span class=\'muted\'>—</span>'}</td>`;
-            return `<tr data-hash="${item.request_hash}">
-              ${toCell(item.request_hash)}
-              ${toCell(item.enclave_hash)}
-              ${toCell(item.files.data)}
-              ${toCell(item.files.meta)}
-              ${toCell(item.files.dataProcessor)}
-              ${toCell(item.files.interactor)}
-              <td style="padding:8px;border-bottom:1px solid rgba(255,255,255,0.06);">
-                <button data-action="select" data-hash="${item.request_hash}">选择</button>
-              </td>
-            </tr>`;
-          }).join('');
-          listTableBody.innerHTML = rows || '<tr><td class="muted" colspan="7" style="padding:8px;">暂无数据</td></tr>';
+          if (!resp.ok || !data.success) throw new Error((data && data.error && data.error.message) || '请求失败');
+          
+          currentResult = data.result;
+          currentMeta = data.meta;
+          
+          updateMetaInfo(data.meta);
+          
+          if (format === 'json') {
+            reportContent.innerHTML = `<pre class="code-block">${JSON.stringify(data.result, null, 2)}</pre>`;
+          } else if (format === 'meta') {
+            reportContent.innerHTML = `<pre class="code-block">${JSON.stringify(data.meta, null, 2)}</pre>`;
+          } else {
+            if (typeof data.result === 'string') {
+              reportContent.innerHTML = data.result;
+            } else {
+              reportContent.innerHTML = `<pre class="code-block">${JSON.stringify(data.result, null, 2)}</pre>`;
+            }
+          }
+          
+          status.textContent = '加载完成';
+          showNotification('报告加载成功');
         } catch (e) {
-          listTableBody.innerHTML = `<tr><td class="muted" colspan="7" style="padding:8px;">加载失败：${String(e)}</td></tr>`;
+          status.textContent = '加载失败';
+          reportContent.innerHTML = `<div class="empty-state text-error">${String(e)}</div>`;
+          showNotification(`加载失败: ${e.message}`, 'error');
         }
       }
 
-      listTableBody.addEventListener('click', (e) => {
-        const btn = e.target.closest('button[data-action="select"]');
-        if (!btn) return;
-        const h = btn.getAttribute('data-hash');
-        hashInput.value = h;
+      function updateMetaInfo(meta) {
+        if (!meta) return;
+        const rows = metaInfo.querySelectorAll('.meta-row');
+        rows[0].querySelector('.meta-value').textContent = meta.request_hash || '-';
+        rows[1].querySelector('.meta-value').textContent = meta.enclave_hash || '-';
+        rows[2].querySelector('.meta-value').textContent = meta.file_type || 'data';
+      }
+
+      let listRefreshController = null;
+      
+      async function refreshListData() {
+        if (listRefreshController) {
+          listRefreshController.abort();
+        }
+        listRefreshController = new AbortController();
+        
+        try {
+          const resp = await fetch('/api/list', { signal: listRefreshController.signal });
+          const data = await resp.json();
+          if (!resp.ok || !data.success) throw new Error(data.message || '请求失败');
+          
+          const rows = (data.result || []).map(item => {
+            const controller = new AbortController();
+            const metaPath = `/api/meta?request_hash=${encodeURIComponent(item.request_hash)}`;
+            return fetch(metaPath, { signal: controller.signal })
+              .then(r => r.json())
+              .then(m => {
+                const fileType = m.success && m.meta?.file_type || 'data';
+                const ext = `.${fileType}`;
+                return `
+                  <tr>
+                    <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.request_hash}</td>
+                    <td><span class="file-type-badge ${getFileTypeClass(ext)}">${fileType}</span></td>
+                    <td>
+                      <button onclick="selectReport('${item.request_hash}')" style="padding:6px 12px;font-size:12px;">选择</button>
+                    </td>
+                  </tr>
+                `;
+              })
+              .catch(e => {
+                if (e.name !== 'AbortError') {
+                  console.warn('获取元数据失败:', e.message);
+                }
+                return `
+                  <tr>
+                    <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.request_hash}</td>
+                    <td><span class="file-type-badge file-type-data">data</span></td>
+                    <td>
+                      <button onclick="selectReport('${item.request_hash}')" style="padding:6px 12px;font-size:12px;">选择</button>
+                    </td>
+                  </tr>
+                `;
+              });
+          });
+          
+          Promise.all(rows).then(htmlRows => {
+            listTableBody.innerHTML = htmlRows.join('') || '<tr><td class="muted" colspan="3" style="padding:16px;text-align:center;">暂无数据</td></tr>';
+          });
+        } catch (e) {
+          if (e.name !== 'AbortError') {
+            console.error('刷新列表失败:', e.message);
+            listTableBody.innerHTML = `<tr><td class="muted" colspan="3" style="padding:16px;text-align:center;">加载失败: ${e.message}</td></tr>`;
+          }
+        } finally {
+          listRefreshController = null;
+        }
+      }
+
+      async function handleFileUpload(file) {
+        uploadBtn.disabled = true;
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('request_hash', newRequestHash.value.trim() || `req_${Date.now()}`);
+        
+        try {
+          const resp = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData
+          });
+          
+          const data = await resp.json();
+          if (!resp.ok || !data.success) throw new Error(data.message || '上传失败');
+          
+          showNotification(`文件处理成功 (${data.type})`);
+          hashInput.value = data.request_hash;
+          newRequestHash.value = '';
+          fileInput.value = '';
+          fileInfo.style.display = 'none';
+          await refreshListData();
+          await loadReport();
+        } catch (e) {
+          showNotification(`上传失败: ${e.message}`, 'error');
+        } finally {
+          uploadBtn.disabled = false;
+        }
+      }
+
+      function selectReport(hash) {
+        hashInput.value = hash;
         loadReport();
         window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      window.selectReport = selectReport;
+
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          tabs.forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          loadReport(tab.dataset.tab);
+        });
       });
 
-      loadBtn.addEventListener('click', loadReport);
-      refreshBtn.addEventListener('click', refreshList);
-      // 页面初始化
-      window.addEventListener('DOMContentLoaded', () => { loadReport(); refreshList(); });
+      uploadArea.addEventListener('click', () => fileInput.click());
+      
+      uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+      });
+      
+      uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
+      });
+      
+      uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        const file = e.dataTransfer.files[0];
+        if (file) {
+          handleFileSelection(file);
+        }
+      });
+
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          handleFileSelection(file);
+        }
+      });
+
+      function handleFileSelection(file) {
+        fileName.textContent = file.name;
+        const ext = path.extname(file.name);
+        fileTypeBadge.textContent = ext.slice(1);
+        fileTypeBadge.className = `file-type-badge ${getFileTypeClass(ext)}`;
+        fileInfo.style.display = 'flex';
+        uploadBtn.disabled = false;
+      }
+
+      clearFile.addEventListener('click', () => {
+        fileInput.value = '';
+        fileInfo.style.display = 'none';
+        uploadBtn.disabled = true;
+      });
+
+      newRequestHash.addEventListener('input', () => {
+        uploadBtn.disabled = !fileInput.files.length;
+      });
+
+      uploadBtn.addEventListener('click', () => {
+        if (fileInput.files.length) {
+          handleFileUpload(fileInput.files[0]);
+        }
+      });
+
+      refreshBtn.addEventListener('click', refreshListData);
+      refreshList.addEventListener('click', refreshListData);
+      generateBtn.addEventListener('click', generateVerificationReport);
+
+      window.addEventListener('DOMContentLoaded', () => { 
+        loadReport(); 
+        refreshListData(); 
+      });
+
+      async function generateVerificationReport() {
+        generateBtn.disabled = true;
+        status.textContent = '正在生成验证报告...';
+        
+        try {
+          const resp = await fetch('/api/generate-report', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              report_type: 'full_verification',
+              timestamp: new Date().toISOString()
+            })
+          });
+          
+          const data = await resp.json();
+          if (!resp.ok || !data.success) throw new Error(data.message || '生成失败');
+          
+          hashInput.value = data.request_hash;
+          showNotification('验证报告生成成功！', 'success');
+          await refreshListData();
+          await loadReport();
+        } catch (e) {
+          showNotification(`生成失败: ${e.message}`, 'error');
+        } finally {
+          generateBtn.disabled = false;
+          status.textContent = '';
+        }
+      }
+    </script>
+
+    <script>
+      window.ivrFetchData = function(format) {
+        const hash = document.getElementById('hashInput').value || 'req_abcdefg';
+        const params = encodeURIComponent(JSON.stringify({ format: format }));
+        fetch('/api/report?request_hash=' + encodeURIComponent(hash) + '&params=' + params)
+          .then(r => r.json())
+          .then(data => {
+            if (data.success) {
+              const reportContent = document.getElementById('reportContent');
+              if (reportContent) {
+                reportContent.innerHTML = `<pre class="code-block">${JSON.stringify(data.result, null, 2)}</pre>`;
+              }
+            } else {
+              alert('获取失败: ' + (data.error?.message || '未知错误'));
+            }
+          })
+          .catch(e => alert('获取失败: ' + e.message));
+      };
+
+      window.showSummary = function() {
+        const section = document.getElementById('summarySection');
+        const content = document.getElementById('summaryContent');
+        
+        if (section) {
+          if (section.style.display === 'none') {
+            section.style.display = 'grid';
+            if (content) {
+              content.textContent = '加载中...';
+              
+              const hash = document.getElementById('hashInput').value || 'req_abcdefg';
+              const params = encodeURIComponent(JSON.stringify({format: 'summary'}));
+              fetch('/api/report?request_hash=' + encodeURIComponent(hash) + '&params=' + params)
+                .then(r => r.json())
+                .then(data => {
+                  if (data.success && content) {
+                    content.textContent = JSON.stringify(data.result, null, 2);
+                  } else if (content) {
+                    content.textContent = '获取失败: ' + (data.error?.message || '未知错误');
+                  }
+                })
+                .catch(e => {
+                  if (content) {
+                    content.textContent = '获取失败: ' + e.message;
+                  }
+                });
+            }
+          } else {
+            section.style.display = 'none';
+          }
+        }
+      };
+
+      window.showRawData = function() {
+        const section = document.getElementById('rawDataSection');
+        if (section) {
+          section.style.display = section.style.display === 'none' ? 'grid' : 'none';
+        }
+      };
+
+      window.path = {
+        extname: function(filename) {
+          const index = filename.lastIndexOf('.');
+          return index === -1 ? '' : filename.slice(index);
+        }
+      };
     </script>
   </body>
-  </html>
+</html>

@@ -1,8 +1,7 @@
 class ReportInteractorCode {
     constructor() {
         this.map = new Map();
-        //TODO 未来启用
-        //this.interval = setInterval(this.decrementCounters.bind(this), 60000); // 每分钟调用一次
+        this.interval = setInterval(this.decrementCounters.bind(this), 60000);
     }
 
     // 访问方法：增加 counter 并返回 object

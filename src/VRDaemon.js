@@ -104,24 +104,51 @@ const close_vrdaemon = function (){
   }
 }
 
-const  process_verfication_report = async function( 
-  request_hash,
-  local_encrypted_report_url, callback){
+const process_verfication_report = async function(request_hash, local_encrypted_report_url, callback) {
+    try {
+        if (!pool) {
+            throw new Error('VRDaemon not initialized');
+        }
 
-    console.log("_meta_provider", _meta_provider)
-    const enclave_hash = await _meta_provider.getEnclaveHash(request_hash);
-    const processor_code = await _meta_provider.getDataProcessorCode(enclave_hash);
-    const interactor_code = await _meta_provider.getInteractorCode(enclave_hash);
-    const shu_private_key = await _meta_provider.getShuPrivateKey();
-    pool.runTask({storage:_storage_context,
-      report:local_encrypted_report_url,
-      meta: {processor_code: processor_code,
-        interactor_code: interactor_code,
-        shu_private_key: shu_private_key,
-        enclave_hash: enclave_hash},
-      meta_file_dir: meta_file_dir,
-      request_hash: request_hash
-    }, callback)
+        const enclave_hash = await _meta_provider.getEnclaveHash(request_hash);
+        const processor_code = await _meta_provider.getDataProcessorCode(enclave_hash);
+        const interactor_code = await _meta_provider.getInteractorCode(enclave_hash);
+        const shu_private_key = await _meta_provider.getShuPrivateKey();
+
+        const task = {
+            storage: _storage_context,
+            report: local_encrypted_report_url,
+            meta: {
+                processor_code: processor_code,
+                interactor_code: interactor_code,
+                shu_private_key: shu_private_key,
+                enclave_hash: enclave_hash
+            },
+            meta_file_dir: meta_file_dir,
+            request_hash: request_hash
+        };
+
+        pool.runTask(task, (err, result) => {
+            if (err) {
+                log.error('Task execution error:', err.message);
+                return callback(err, null);
+            }
+
+            if (result && typeof result === 'object') {
+                if (result.success === false) {
+                    const error = new Error(result.error || 'Unknown error');
+                    log.error('Task failed:', result.error);
+                    return callback(error, null);
+                }
+                return callback(null, result.result || result);
+            }
+
+            callback(null, result);
+        });
+    } catch (err) {
+        log.error('Failed to prepare task:', err.message);
+        callback(err, null);
+    }
 }
 
 module.exports = {
