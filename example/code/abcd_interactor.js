@@ -365,14 +365,17 @@ function api_html(meta, storage, p) {
         totalSize += file.size || 0;
     });
     
-    const getRandomSample = (data, percentage = 10) => {
+    const getRandomSample = (data, percentage = 10, maxLength = 1000) => {
         if (!data) return null;
         const content = typeof data === 'string' ? data : 
-                        data.content || data.text || JSON.stringify(data, null, 2);
-        const sampleSize = Math.max(1, Math.floor(content.length * percentage / 100));
-        if (content.length <= sampleSize) return content;
+                    data.content || data.text || JSON.stringify(data, null, 2);
+        const sampleSize = Math.max(1, Math.min(
+           Math.floor(content.length * percentage / 100),
+           maxLength
+        ));
+        if (content.length <= sampleSize) return content.substring(0, maxLength);
         const start = Math.floor(Math.random() * (content.length - sampleSize));
-        return content.substring(start, start + sampleSize);
+        return content.substring(start, start + sampleSize).substring(0, maxLength);
     };
     
     const randomSample = getRandomSample(rawData, 10);
