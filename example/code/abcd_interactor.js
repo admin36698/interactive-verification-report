@@ -64,6 +64,22 @@ function api_summary(meta, storage, p) {
     return result;
 }
 
+function getFileIcon(fileType) {
+    const icons = {
+        '.pdf': '📄',
+        '.json': '📋',
+        '.txt': '📝',
+        '.md': '📝',
+        '.xml': '📋',
+        '.csv': '📊',
+        '.data': '📦',
+        '.zip': '📁',
+        '.rar': '📁',
+        '.7z': '📁'
+    };
+    return icons[fileType.toLowerCase()] || '📁';
+}
+
 function renderZipContent(processed_data) {
     if (!processed_data || !processed_data.files) return '';
     
@@ -78,18 +94,22 @@ function renderZipContent(processed_data) {
                 <div style="display:grid;gap:8px;">
                     ${files.map((file, index) => `
                         <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:rgba(255,255,255,0.04);border-radius:6px;">
-                            <span style="font-size:18px;">${file.type === '.pdf' ? '📄' : file.type === '.json' ? '📋' : file.type === '.txt' ? '📝' : '📁'}</span>
+                            <span style="font-size:18px;">${getFileIcon(file.type)}</span>
                             <div style="flex:1;min-width:0;">
                                 <div style="color:#e6e8ee;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${safe(file.name)}</div>
                                 <div style="color:#9aa4b2;font-size:12px;">${(file.size / 1024).toFixed(2)} KB</div>
                             </div>
+                            ${file.content && !file.isBinary ? `
                             <button onclick="toggleFileContent(${index})" style="padding:6px 12px;border:none;border-radius:4px;background:rgba(89,140,255,0.2);color:#5b8cff;font-size:12px;cursor:pointer;">
                                 查看内容
                             </button>
+                            ` : ''}
                         </div>
+                        ${file.content && !file.isBinary ? `
                         <div id="file-content-${index}" style="display:none;padding:12px;background:rgba(0,0,0,0.3);border-radius:6px;margin-top:-4px;">
-                            <pre style="margin:0;color:#e2e8f0;font-size:13px;overflow-x:auto;max-height:200px;">${safe(file.content || file.isBinary ? '[二进制文件，无法显示]' : '')}</pre>
+                            <pre style="margin:0;color:#e2e8f0;font-size:13px;overflow-x:auto;max-height:200px;">${safe(file.content)}</pre>
                         </div>
+                        ` : ''}
                     `).join('')}
                 </div>
             </div>
@@ -146,23 +166,54 @@ function renderJsonContent(processed_data) {
     `;
 }
 
-function generateReportSummary(meta) {
-    const processed_data = meta.processed_data;
-    const fileType = meta.file_type;
-    const dataLength = calculateDataLength(processed_data, fileType);
+function generatePieChart(stats, size = 200, radius = 80) {
+    const colors = ['#60a5fa', '#8b5cf6', '#34d399', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4', '#84cc16'];
+    const center = size / 2;
+    let currentAngle = -90;
+    const paths = [];
     
-    const reportSummary = {
-        request_hash: meta.request_hash,
-        enclave_hash: meta.enclave_hash,
-        file_type: fileType || 'data',
-        original_name: meta.original_name,
-        data_length: dataLength,
-        generated_at: new Date().toISOString(),
-        data_preview: processed_data?.content?.substring(0, 100) + (processed_data?.content?.length > 100 ? '...' : '') ||
-                     processed_data?.text?.substring(0, 100) + (processed_data?.text?.length > 100 ? '...' : '') || 'N/A'
-    };
+    Object.entries(stats).forEach(([ext, count], index) => {
+        const total = Object.values(stats).reduce((sum, val) => sum + val, 0);
+        const percentage = (count / total) * 100;
+        const angle = (percentage / 100) * 360;
+        const startAngle = currentAngle;
+        currentAngle += angle;
+        
+        const startRad = (startAngle * Math.PI) / 180;
+        const endRad = (currentAngle * Math.PI) / 180;
+        const x1 = center + radius * Math.cos(startRad);
+        const y1 = center + radius * Math.sin(startRad);
+        const x2 = center + radius * Math.cos(endRad);
+        const y2 = center + radius * Math.sin(endRad);
+        const color = colors[index % colors.length];
+        const largeArcFlag = angle > 180 ? 1 : 0;
+        
+        paths.push(`<path d="M ${center} ${center} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2} Z" fill="${color}" opacity="0.8"/>`);
+    });
     
-    return reportSummary;
+    return `
+        <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+            <circle cx="${center}" cy="${center}" r="${radius}" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="20"/>
+            ${paths.join('')}
+        </svg>
+    `;
+}
+
+function generatePieChartLegend(stats) {
+    const colors = ['#60a5fa', '#8b5cf6', '#34d399', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4', '#84cc16'];
+    const total = Object.values(stats).reduce((sum, val) => sum + val, 0);
+    
+    return Object.entries(stats).map(([ext, count], index) => {
+        const percentage = ((count / total) * 100).toFixed(1);
+        const color = colors[index % colors.length];
+        return `
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:12px;height:12px;border-radius:3px;background:${color};"></div>
+                <span style="color:#9aa4b2;font-size:13px;">${safe(ext)}</span>
+                <span style="color:#e6e8ee;font-size:13px;margin-left:auto;">${count} 个 (${percentage}%)</span>
+            </div>
+        `;
+    }).join('');
 }
 
 function renderVerificationReport(meta) {
@@ -182,6 +233,9 @@ function renderVerificationReport(meta) {
     });
     
     const sizeInMB = (totalSize / (1024 * 1024)).toFixed(2);
+    
+    const pieChart = Object.keys(fileTypeStats).length > 0 ? generatePieChart(fileTypeStats, 180, 70) : '';
+    const pieChartLegend = Object.keys(fileTypeStats).length > 0 ? generatePieChartLegend(fileTypeStats) : '';
     
     return `
         <div style="max-width:900px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;">
@@ -210,7 +264,7 @@ function renderVerificationReport(meta) {
                             <span style="color:#f59e0b;">${sizeInMB} MB</span>
                         </div>
                         <div style="display:flex;justify-content:space-between;">
-                            <span style="color:#9aa4b2;">文件后缀</span>
+                            <span style="color:#9aa4b2;">文件类型</span>
                             <span>${safe(fileType || 'data')}</span>
                         </div>
                         <div style="display:flex;justify-content:space-between;">
@@ -264,12 +318,28 @@ function renderVerificationReport(meta) {
                         <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:12px;">
                             ${files.map((file, index) => `
                                 <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px;display:flex;align-items:center;gap:10px;">
-                                    <span style="font-size:20px;">${file.type === '.pdf' ? '📄' : file.type === '.json' ? '📋' : file.type === '.txt' ? '📝' : '📁'}</span>
+                                    <span style="font-size:20px;">${getFileIcon(file.type)}</span>
                                     <div style="flex:1;min-width:0;">
                                         <div style="color:#e6e8ee;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${safe(file.name)}</div>
                                         <div style="color:#9aa4b2;font-size:11px;">${(file.size / 1024).toFixed(1)} KB</div>
                                     </div>
+                                    ${file.content && !file.isBinary ? `
+                                    <button onclick="toggleFileContent_${index}()" style="padding:6px 12px;border:none;border-radius:4px;background:rgba(89,140,255,0.2);color:#5b8cff;font-size:12px;cursor:pointer;">
+                                        查看
+                                    </button>
+                                    ` : ''}
                                 </div>
+                                <script>
+                                    function toggleFileContent_${index}() {
+                                        const el = document.getElementById('file-content-${index}');
+                                        el.style.display = el.style.display === 'none' ? 'block' : 'none';
+                                    }
+                                </script>
+                                ${file.content && !file.isBinary ? `
+                                <div id="file-content-${index}" style="display:none;padding:12px;background:rgba(0,0,0,0.3);border-radius:6px;margin-top:-4px;">
+                                    <pre style="margin:0;color:#e2e8f0;font-size:13px;overflow-x:auto;max-height:150px;">${safe(file.content)}</pre>
+                                </div>
+                                ` : ''}
                             `).join('')}
                         </div>
                         ` : `
@@ -283,22 +353,13 @@ function renderVerificationReport(meta) {
                     ${isZip && totalFiles > 0 ? `
                     <div style="padding:20px;border-top:1px solid rgba(255,255,255,0.08);">
                         <h3 style="margin:0 0 16px 0;font-size:16px;color:#e6e8ee;">📊 文件类型统计</h3>
-                        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));gap:12px;">
-                            ${Object.entries(fileTypeStats).map(([type, count]) => {
-                                const percentage = ((count / totalFiles) * 100).toFixed(1);
-                                return `
-                                    <div style="background:rgba(255,255,255,0.03);border-radius:8px;padding:12px;">
-                                        <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-                                            <span style="color:#9aa4b2;font-size:13px;">${type}</span>
-                                            <span style="color:#e6e8ee;font-size:13px;">${count} 个</span>
-                                        </div>
-                                        <div style="height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;">
-                                            <div style="height:100%;width:${percentage}%;background:linear-gradient(90deg,#60a5fa,#8b5cf6);border-radius:3px;"></div>
-                                        </div>
-                                        <div style="text-align:right;margin-top:4px;color:#9aa4b2;font-size:11px;">${percentage}%</div>
-                                    </div>
-                                `;
-                            }).join('')}
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+                            <div style="display:flex;justify-content:center;align-items:center;">
+                                ${pieChart}
+                            </div>
+                            <div style="display:grid;gap:10px;">
+                                ${pieChartLegend}
+                            </div>
                         </div>
                     </div>
                     ` : ''}
@@ -365,54 +426,31 @@ function api_html(meta, storage, p) {
         totalSize += file.size || 0;
     });
     
-    const getRandomSample = (data, percentage = 10, maxLength = 1000) => {
+    const getRandomSample = (data, percentage = 10) => {
         if (!data) return null;
-        const content = typeof data === 'string' ? data : 
-                    data.content || data.text || JSON.stringify(data, null, 2);
-        const sampleSize = Math.max(1, Math.min(
-           Math.floor(content.length * percentage / 100),
-           maxLength
-        ));
-        if (content.length <= sampleSize) return content.substring(0, maxLength);
+        let content = '';
+        if (isZip && data.files) {
+            const textFiles = data.files.filter(f => !f.isBinary && f.content);
+            if (textFiles.length > 0) {
+                const randomFile = textFiles[Math.floor(Math.random() * textFiles.length)];
+                content = randomFile.content;
+            } else {
+                content = JSON.stringify(data.files?.map(f => ({name: f.name, type: f.type, size: f.size})) || [], null, 2);
+            }
+        } else {
+            content = typeof data === 'string' ? data : 
+                      data.content || data.text || JSON.stringify(data, null, 2);
+        }
+        const sampleSize = Math.max(1, Math.floor(content.length * percentage / 100));
+        if (content.length <= sampleSize) return content;
         const start = Math.floor(Math.random() * (content.length - sampleSize));
-        return content.substring(start, start + sampleSize).substring(0, maxLength);
+        return content.substring(start, start + sampleSize);
     };
     
     const randomSample = getRandomSample(rawData, 10);
     
-    const chartColors = ['#60a5fa', '#8b5cf6', '#34d399', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4', '#84cc16'];
-    
-    let pieChartPaths = '';
-    let pieChartLegend = '';
-    if (isZip && files.length > 0) {
-        let currentAngle = -90;
-        const stats = Object.entries(fileTypeStats);
-        pieChartPaths = stats.map(([ext, count], index) => {
-            const percentage = (count / files.length) * 100;
-            const angle = (percentage / 100) * 360;
-            const startAngle = currentAngle;
-            currentAngle += angle;
-            const startRad = (startAngle * Math.PI) / 180;
-            const endRad = (currentAngle * Math.PI) / 180;
-            const x1 = 100 + 80 * Math.cos(startRad);
-            const y1 = 100 + 80 * Math.sin(startRad);
-            const x2 = 100 + 80 * Math.cos(endRad);
-            const y2 = 100 + 80 * Math.sin(endRad);
-            const color = chartColors[index % chartColors.length];
-            const largeArcFlag = angle > 180 ? 1 : 0;
-            return '<path d="M 100 100 L ' + x1 + ' ' + y1 + ' A 80 80 0 ' + largeArcFlag + ' 1 ' + x2 + ' ' + y2 + ' Z" fill="' + color + '" opacity="0.8"/>';
-        }).join('');
-        
-        pieChartLegend = stats.map(([ext, count], index) => {
-            const percentage = ((count / files.length) * 100).toFixed(1);
-            const color = chartColors[index % chartColors.length];
-            return '<div style="display:flex;align-items:center;gap:10px;">' +
-                '<div style="width:12px;height:12px;border-radius:3px;background:' + color + ';"></div>' +
-                '<span style="color:#9aa4b2;font-size:13px;">' + safe(ext) + '</span>' +
-                '<span style="color:#e6e8ee;font-size:13px;margin-left:auto;">' + count + ' 个 (' + percentage + '%)</span>' +
-                '</div>';
-        }).join('');
-    }
+    const pieChartPaths = Object.keys(fileTypeStats).length > 0 ? generatePieChart(fileTypeStats).replace(/<svg[^>]+>/, '').replace('</svg>', '') : '';
+    const pieChartLegend = Object.keys(fileTypeStats).length > 0 ? generatePieChartLegend(fileTypeStats) : '';
     
     return `
         <div style="display:grid;gap:16px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;">
