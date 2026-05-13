@@ -37,13 +37,17 @@ class FileProcessor {
             const zip = await unzipper.Open.file(filePath);
             
             for (const entry of zip.files) {
-                if (!entry.type === 'File') continue;
+                if (entry.type !== 'File') continue;
+                
+                if (entry.uncompressedSize === 0) continue;
                 
                 const content = await entry.buffer();
+                const ext = path.extname(entry.path).toLowerCase();
+                
                 entries.push({
                     name: entry.path,
                     size: entry.uncompressedSize,
-                    type: path.extname(entry.path).toLowerCase(),
+                    type: ext || '.unknown',
                     content: content.toString('utf-8'),
                     isBinary: this.isBinary(content)
                 });
